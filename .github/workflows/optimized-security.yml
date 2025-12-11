@@ -24,26 +24,30 @@ jobs:
       with:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
+        cache-dependency-path: vite-project/package-lock.json
 
     - name: Cache de dependencias
       uses: actions/cache@v4
       with:
         path: |
-          node_modules
+          vite-project/node_modules
           ~/.npm
           ~/.cache/vite
-        key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
+        key: ${{ runner.os }}-node-${{ hashFiles('vite-project/package-lock.json') }}
 
     - name: Instalar dependencias
       run: npm ci
+      working-directory: vite-project
 
     - name: Linting y Formateo
       run: |
         npm run lint || echo "Linting no configurado o falló"
         npm run format:check || echo "Formateo no configurado"
+      working-directory: vite-project
 
     - name: Type Checking
       run: npm run type-check || echo "Type checking no configurado"
+      working-directory: vite-project
 
     - name: Tests Unitarios con Cobertura
       run: |
@@ -51,14 +55,17 @@ jobs:
         # Verificación básica de cobertura (opcional)
         COVERAGE=$(cat coverage/coverage-summary.json 2>/dev/null | jq -r '.total.lines.pct // 0' 2>/dev/null || echo "0")
         echo "Cobertura de líneas: ${COVERAGE}%"
+      working-directory: vite-project
 
     - name: Build de Producción
       run: npm run build
       env:
         VITE_ENV: ci
+      working-directory: vite-project
 
     - name: Análisis de Bundle Size
       run: npx bundlesize 2>/dev/null || echo "Bundlesize no ejecutado (puede requerir configuración)"
+      working-directory: vite-project
 
     - name: Lighthouse CI
       run: |
@@ -68,13 +75,14 @@ jobs:
         else
           echo "Lighthouse CLI no instalado, omitiendo..."
         fi
+      working-directory: vite-project
 
     - name: Subir Reportes de Cobertura
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: coverage-report-${{ github.run_id }}
-        path: coverage/
+        path: vite-project/coverage/
         retention-days: 30
 
     - name: Subir Reporte de Lighthouse
@@ -82,5 +90,5 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: lighthouse-report-${{ github.run_id }}
-        path: .lighthouseci/
+        path: vite-project/.lighthouseci/
         retention-days: 30
